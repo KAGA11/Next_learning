@@ -1,6 +1,7 @@
 import Image from 'next/image';
-import { lusitana } from '@/app/ui/fonts';
+// import { lusitana } from '@/app/ui/fonts';
 import Search from '@/app/ui/search';
+import clsx from 'clsx';
 import {
   CustomersTableType,
   FormattedCustomersTable,
@@ -13,7 +14,11 @@ export default async function CustomersTable({
 }) {
   return (
     <div className="w-full">
-      <h1 className={`${lusitana.className} mb-8 text-xl md:text-2xl`}>
+      <h1 className={clsx(
+        'mb-8 text-xl md:text-2xl',
+        // `${lusitana.className} `
+        )
+      }>
         Customers
       </h1>
       <Search placeholder="Search customers..." />
