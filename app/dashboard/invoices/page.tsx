@@ -6,7 +6,12 @@ import { InvoicesTableSkeleton } from '@/app/ui/skeletons';
 import { Suspense } from 'react';
 import clsx from 'clsx';
 import { fetchInvoicesPages } from '@/app/lib/data';
+import { Metadata } from 'next';
 // import { lusitana } from '@/app/ui/fonts';
+
+export const metadata: Metadata = {
+  title: 'Invoices',
+}
 
 /**
  * 页面组件，用于渲染发票列表页面。
