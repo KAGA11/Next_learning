@@ -11,11 +11,15 @@ import { formatCurrency } from './utils';
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
 
+/**
+ * 从数据库中获取收入数据。
+ * 
+ * @returns 一个包含收入数据的 Promise，收入数据类型为 `Revenue[]`。
+ * @throws 如果在查询数据库时发生错误，将抛出一个包含错误信息的异常。
+ */
 export async function fetchRevenue() {
   try {
-    // Artificially delay a response for demo purposes.
-    // Don't do this in production :)
-
+    // 执行 SQL 查询，从 revenue 表中获取所有数据，并将结果映射到 Revenue 类型的数组中
     const data = await sql<Revenue[]>`SELECT * FROM revenue`;
     
     return data;
@@ -45,27 +49,38 @@ export async function fetchLatestInvoices() {
   }
 }
 
+/**
+ * 从数据库中获取卡片数据，包括发票数量、客户数量、已支付发票总额和待支付发票总额。
+ * 
+ * @returns 一个包含卡片数据的对象，包含 `numberOfCustomers`、`numberOfInvoices`、`totalPaidInvoices` 和 `totalPendingInvoices` 属性。
+ * @throws 如果在查询数据库时发生错误，将抛出一个包含错误信息的异常。
+ */
 export async function fetchCardData() {
   try {
-    // You can probably combine these into a single SQL query
-    // However, we are intentionally splitting them to demonstrate
-    // how to initialize multiple queries in parallel with JS.
+    // 发起异步查询，获取发票的总数
     const invoiceCountPromise = sql`SELECT COUNT(*) FROM invoices`;
+    // 发起异步查询，获取客户的总数
     const customerCountPromise = sql`SELECT COUNT(*) FROM customers`;
+    // 发起异步查询，获取已支付和待支付发票的总金额
     const invoiceStatusPromise = sql`SELECT
          SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) AS "paid",
          SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending"
          FROM invoices`;
 
+    // 并行执行所有查询，并等待所有查询完成
     const data = await Promise.all([
       invoiceCountPromise,
       customerCountPromise,
       invoiceStatusPromise,
     ]);
 
+    // 从查询结果中提取发票数量
     const numberOfInvoices = Number(data[0][0].count ?? '0');
+    // 从查询结果中提取客户数量
     const numberOfCustomers = Number(data[1][0].count ?? '0');
+    // 从查询结果中提取已支付发票的总金额，并格式化为货币字符串
     const totalPaidInvoices = formatCurrency(data[2][0].paid ?? '0');
+    // 从查询结果中提取待支付发票的总金额，并格式化为货币字符串
     const totalPendingInvoices = formatCurrency(data[2][0].pending ?? '0');
 
     return {
