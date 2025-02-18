@@ -15,7 +15,16 @@ const iconMap = {
   invoices: InboxIcon,
 };
 
-export default async function CardWrapper() {
+/**
+ * 异步函数组件，用于包裹多个卡片组件并展示卡片数据。
+ * 
+ * 该组件会调用 `fetchCardData` 函数从数据库中获取卡片数据，
+ * 然后将这些数据传递给 `Card` 组件进行展示。
+ * 
+ * @returns {JSX.Element} 包含多个 `Card` 组件的 JSX 元素。
+ */
+export default async function CardWrapper(){
+  // 调用 fetchCardData 函数从数据库中获取卡片数据
   const {
     numberOfInvoices,
     numberOfCustomers,
@@ -25,6 +34,7 @@ export default async function CardWrapper() {
   
   return (
     <>
+      {/* 渲染 */}
       <Card title="Collected" value={totalPaidInvoices} type="collected" />
       <Card title="Pending" value={totalPendingInvoices} type="pending" />
       <Card title="Total Invoices" value={numberOfInvoices} type="invoices" />
@@ -37,6 +47,7 @@ export default async function CardWrapper() {
   );
 }
 
+// CardWrapper 里的 Card 组件
 export function Card({
   title,
   value,
