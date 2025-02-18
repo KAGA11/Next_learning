@@ -4,15 +4,31 @@ import postgres from 'postgres';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
+export type State = {
+    errors?: {
+      customerId?: string[];
+      amount?: string[];
+      status?: string[];
+    };
+    message?: string | null;
+};
+
+
+
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
  
 const FormSchema = z.object({
     id: z.string(),
-    customerId: z.string(),
-    amount: z.coerce.number(),
-    status: z.enum(['pending', 'paid']),
+    customerId: z.string({
+        invalid_type_error: 'Please select a customer.',
+    }),
+    amount: z.coerce.number().gt(0, { message: 'Please enter an amount greater than $0.' }),
+    status: z.enum(['pending', 'paid'],{
+        invalid_type_error: 'Please select an invoice status.',
+    }),
     date: z.string(),
 })
+
 
 const CreateInvoice = FormSchema.omit({ id: true, date: true });
 
@@ -26,17 +42,25 @@ const CreateInvoice = FormSchema.omit({ id: true, date: true });
  * @param {FormData} formData - 包含客户 ID、金额和状态的表单数据。
  * @throws {Error} 如果表单数据解析失败或数据库插入操作失败。
  */
-export async function createInvoice(formData: FormData) {
+export async function createInvoice(prevState: State, formData: FormData) {
     // 从表单数据中提取客户 ID、金额和状态，并使用 CreateInvoice 模式进行解析
-    const { customerId, amount, status } = CreateInvoice.parse({
+    const validatedFields = CreateInvoice.safeParse({
         customerId: formData.get('customerId'),
         amount: formData.get('amount'),
         status: formData.get('status'),
     });
-    // 将金额转换为美分，以避免浮点数计算误差
+
+    if (!validatedFields.success) {
+        return {
+          errors: validatedFields.error.flatten().fieldErrors,
+          message: 'Missing Fields. Failed to Create Invoice.',
+        };
+    }
+
+    const { customerId, amount, status } = validatedFields.data;
     const amountInCents = amount * 100;
-    // 获取当前日期，并格式化为 YYYY-MM-DD 格式
     const date = new Date().toISOString().split('T')[0];
+ 
 
     try {
          // 执行 SQL 插入操作，将发票数据插入到数据库中
@@ -57,15 +81,23 @@ export async function createInvoice(formData: FormData) {
 // update
 const UpdateInvoice = FormSchema.omit({ id: true, date: true });
  
-export async function updateInvoice(id: string, formData: FormData) {
-  const { customerId, amount, status } = UpdateInvoice.parse({
-    customerId: formData.get('customerId'),
-    amount: formData.get('amount'),
-    status: formData.get('status'),
-  });
- 
-  const amountInCents = amount * 100;
- 
+export async function updateInvoice(id: string, prevState:State, formData: FormData) {
+    const validatedFields = UpdateInvoice.safeParse({
+        customerId: formData.get('customerId'),
+        amount: formData.get('amount'),
+        status: formData.get('status'),
+      });
+     
+    if (!validatedFields.success) {
+        return {
+          errors: validatedFields.error.flatten().fieldErrors,
+          message: 'Missing Fields. Failed to Update Invoice.',
+        };
+    }
+  
+    const { customerId, amount, status } = validatedFields.data;
+    const amountInCents = amount * 100;
+    
   try {
         await sql`
         UPDATE invoices
@@ -84,8 +116,6 @@ export async function updateInvoice(id: string, formData: FormData) {
 
 // delete
 export async function deleteInvoice(id: string) {
-    throw new Error('Failed to Delete Invoice');
-
     await sql`DELETE FROM invoices WHERE id = ${id}`;
     revalidatePath('/dashboard/invoices');
 }
